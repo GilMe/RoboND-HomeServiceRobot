@@ -8,4 +8,5 @@
   <arg name="rviz_config_file" default="$(find turtlebot_rviz_launchers)/rviz/robot.rviz"/>
 
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rviz_config_file)" />
+  <node name="add_markers" pkg="add_markers" type="add_markers" />
 </launch>

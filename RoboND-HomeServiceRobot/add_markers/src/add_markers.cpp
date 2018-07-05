@@ -111,30 +111,12 @@ int main( int argc, char** argv )
   // Subscribe to the /goal_status topic and call the laser_callback function
   goal_status_sub = n.subscribe("/goal_status", 10, status_callback);
 
-
-  //*****
-  // ADD PICKUP MARKER
-
-  // Set the marker action to add marker.
-  //marker_pub.getNumSubscribers();
-
-  // Publish the marker
-/*  while (marker_pub.getNumSubscribers() < 1)
-  {
-    if (!ros::ok())
-    {
-      return 0;
-    }
-    ROS_WARN_ONCE("Please create a subscriber to the marker");
-     sleep(1);
+  // Enter an infinite loop where the status_callback function will be called when new status messages arrive
+  ros::Duration time_between_ros_wakeups(0.001);
+  while (ros::ok()) {
+      ros::spinOnce();
+      time_between_ros_wakeups.sleep();
   }
-*/
-    // Enter an infinite loop where the laser_callback function will be called when new laser messages arrive
-    ros::Duration time_between_ros_wakeups(0.001);
-    while (ros::ok() && !done) {
-        ros::spinOnce();
-        time_between_ros_wakeups.sleep();
-    }
 
   return 0;
   
