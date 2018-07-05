@@ -1,0 +1,11 @@
+<!--
+  Used for visualising turtlebot in action.  
+  
+  It requires minimal.launch and optionally 3dsensor.launch to already be up and running.
+ -->
+<launch>
+
+  <arg name="rviz_config_file" default="$(find turtlebot_rviz_launchers)/rviz/robot.rviz"/>
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rviz_config_file)" />
+</launch>
