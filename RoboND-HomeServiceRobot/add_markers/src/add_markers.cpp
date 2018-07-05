@@ -1,6 +1,8 @@
 #include <ros/ros.h>
 #include <visualization_msgs/Marker.h>
 
+#include "std_msgs/String.h"
+
 #define PICKUP_X 5.0
 #define PICKUP_Y -8.5
 #define PICKUP_Z 0.0
@@ -9,19 +11,64 @@
 #define DROPOFF_Y -8.5
 #define DROPOFF_Z 0.0
 
+visualization_msgs::Marker marker;
+ros::Publisher marker_pub;
+ros::Subscriber goal_status_sub;
+bool done = false;
+
+// The laser_callback function will be called each time a laser scan data is received
+void status_callback(const std_msgs::String::ConstPtr& scan_msg)
+{
+  //getting the msg that was published
+  std_msgs::String goal_status_msg = *scan_msg;
+  ROS_INFO("Inside callback. Got goal status update");
+
+
+  if(goal_status_msg.data == "Moving towards pickup"){
+    ROS_INFO("Created pickup marker");
+    marker.header.stamp = ros::Time::now();
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.pose.position.x = PICKUP_X;
+    marker.pose.position.y = PICKUP_Y;
+    marker.pose.position.z = PICKUP_Z; 
+  }
+  else if(goal_status_msg.data == "Reached pickup"){
+    ROS_INFO("Deleted pickup marker");
+    marker.header.stamp = ros::Time::now();
+    marker.action = visualization_msgs::Marker::DELETE;
+  }
+  else if(goal_status_msg.data == "Moving towards dropoff"){
+    ROS_INFO("Moving towards dropoff - no marker generated");
+  }
+  else if(goal_status_msg.data == "Reached dropoff"){
+    ROS_INFO("Created dropoff marker");
+    marker.header.stamp = ros::Time::now();
+    marker.action = visualization_msgs::Marker::ADD; 
+    marker.pose.position.x = DROPOFF_X;
+    marker.pose.position.y = DROPOFF_Y;
+    marker.pose.position.z = DROPOFF_Z;
+    done = true;
+  }
+  else
+    return;
+
+  
+  marker_pub.publish(marker);
+  return;
+
+}
 
 int main( int argc, char** argv )
 {
   ros::init(argc, argv, "add_marker");
   ros::NodeHandle n;
   ros::Rate r(1);
-  ros::Publisher marker_pub = n.advertise<visualization_msgs::Marker>("visualization_marker", 1);
+
 
   //********************
-  // General marker frame setup
+  // Setting up general marker frame message variables
   // *******
  
-  visualization_msgs::Marker marker;
   // Set the frame ID and timestamp.  See the TF tutorials for information on these.
   marker.header.frame_id = "/map";
   marker.header.stamp = ros::Time::now();
@@ -33,6 +80,12 @@ int main( int argc, char** argv )
 
   // Set the marker type.  Initially this is CUBE, and cycles between that and SPHERE, ARROW, and CYLINDER
   marker.type = visualization_msgs::Marker::CUBE;
+
+  // Set the orientation
+  marker.pose.orientation.x = 0.0;
+  marker.pose.orientation.y = 0.0;
+  marker.pose.orientation.z = 0.0;
+  marker.pose.orientation.w = 1.0;
 
   // Set the scale of the marker -- 0.5x0.5x0.5 here means 0.5m on a side
   marker.scale.x = 0.5;
@@ -46,77 +99,42 @@ int main( int argc, char** argv )
   marker.color.a = 1.0;
 
   marker.lifetime = ros::Duration();
+  
+  // ***********
+  // Setting up pupblisher and subscriber
+  // *****************
 
-  // ************
-  // For pickup 
-  // ************
+  ROS_INFO("Opening publisher");
+  marker_pub = n.advertise<visualization_msgs::Marker>("visualization_marker", 1);
 
-  // Set the pose of the marker.  This is a full 6DOF pose relative to the frame/time specified in the header
+  ROS_INFO("Opening subscriber");  
+  // Subscribe to the /goal_status topic and call the laser_callback function
+  goal_status_sub = n.subscribe("/goal_status", 10, status_callback);
 
-
-  marker.pose.position.x = PICKUP_X;
-  marker.pose.position.y = PICKUP_Y;
-  marker.pose.position.z = PICKUP_Z;
-
-  marker.pose.orientation.x = 0.0;
-  marker.pose.orientation.y = 0.0;
-  marker.pose.orientation.z = 0.0;
-  marker.pose.orientation.w = 1.0;
 
   //*****
   // ADD PICKUP MARKER
 
   // Set the marker action to add marker.
-  marker.action = visualization_msgs::Marker::ADD;
+  //marker_pub.getNumSubscribers();
 
   // Publish the marker
-
-    // Publish the marker
-    while (marker_pub.getNumSubscribers() < 1)
+/*  while (marker_pub.getNumSubscribers() < 1)
+  {
+    if (!ros::ok())
     {
-      if (!ros::ok())
-      {
-        return 0;
-      }
-      ROS_WARN_ONCE("Please create a subscriber to the marker");
-      sleep(1);
+      return 0;
     }
-    marker_pub.publish(marker);
-
-  ROS_INFO("Created pickup marker");
-  marker_pub.publish(marker);
-
-  // Wait 5 seconds for the pickup
-  ros::Duration(5).sleep(); // sleep for 5 seconds
-
-  //*****
-  // REMOVE PICKUP MARKER
-
-  // Set the marker action to delete marker.
-  marker.header.stamp = ros::Time::now();
-  marker.action = visualization_msgs::Marker::DELETE;  
-
-  marker_pub.publish(marker);
-  ROS_INFO("Deleted pickup marker");
-
-  // Wait 5 seconds for the pickup
-  ros::Duration(5).sleep(); // sleep for 5 seconds
-
-  // ************
-  // For dropoff 
-  // ************
-
-  // Set the marker action to delete marker.
-  marker.header.stamp = ros::Time::now();
-  marker.action = visualization_msgs::Marker::ADD; 
-
-  marker.pose.position.x = DROPOFF_X;
-  marker.pose.position.y = DROPOFF_Y;
-  marker.pose.position.z = DROPOFF_Z;
-
-  marker_pub.publish(marker);
-  ROS_INFO("Created dropoff marker");
-
+    ROS_WARN_ONCE("Please create a subscriber to the marker");
+     sleep(1);
+  }
+*/
+    // Enter an infinite loop where the laser_callback function will be called when new laser messages arrive
+    ros::Duration time_between_ros_wakeups(0.001);
+    while (ros::ok() && !done) {
+        ros::spinOnce();
+        time_between_ros_wakeups.sleep();
+    }
 
   return 0;
   
